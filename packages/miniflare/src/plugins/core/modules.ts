@@ -79,6 +79,9 @@ export const SourceOptionsSchema = z.union([
     modules: z.boolean().optional(),
     // How to interpret automatically collected modules
     modulesRules: z.array(ModuleRuleSchema).optional(),
+    // `modules` "name"s will be their paths relative to this value.
+    // This ensures file paths in stack traces are correct.
+    modulesRoot: z.string().optional(),
   }),
   z.object({
     scriptPath: z.string(),
@@ -87,6 +90,9 @@ export const SourceOptionsSchema = z.union([
     modules: z.boolean().optional(),
     // How to interpret automatically collected modules
     modulesRules: z.array(ModuleRuleSchema).optional(),
+    // `modules` "name"s will be their paths relative to this value.
+    // This ensures file paths in stack traces are correct.
+    modulesRoot: z.string().optional(),
   }),
 ]);
 export type SourceOptions = z.infer<typeof SourceOptionsSchema>;
@@ -126,7 +132,11 @@ export class ModuleLocator {
   readonly #visitedPaths = new Set<string>();
   readonly modules: Worker_Module[] = [];
 
-  constructor(rules?: ModuleRule[]) {
+  constructor(
+    private readonly modulesRoot: string,
+    private readonly additionalModuleNames: string[],
+    rules?: ModuleRule[]
+  ) {
     this.#compiledRules = compileModuleRules(rules);
   }
 
@@ -143,7 +153,7 @@ export class ModuleLocator {
 
   #visitJavaScriptModule(code: string, modulePath: string, esModule = true) {
     // Register module
-    const name = path.relative("", modulePath);
+    const name = path.relative(this.modulesRoot, modulePath);
     this.modules.push(
       esModule ? { name, esModule: code } : { name, commonJsModule: code }
     );
@@ -244,14 +254,20 @@ ${dim(modulesConfig)}`;
     }
     const spec = specExpression.value;
 
-    // `node:` and `cloudflare:` imports don't need to be included explicitly
-    if (spec.startsWith("node:") || spec.startsWith("cloudflare:")) {
+    // `node:`, `cloudflare:` and `workerd:` imports don't need to be included
+    // explicitly
+    if (
+      spec.startsWith("node:") ||
+      spec.startsWith("cloudflare:") ||
+      spec.startsWith("workerd:") ||
+      this.additionalModuleNames.includes(spec)
+    ) {
       return;
     }
 
     const identifier = path.resolve(path.dirname(referencingPath), spec);
     // The runtime requires module identifiers to be relative paths
-    const name = path.relative("", identifier);
+    const name = path.relative(this.modulesRoot, identifier);
 
     // If we've already visited this path, return to avoid unbounded recursion
     if (this.#visitedPaths.has(identifier)) return;

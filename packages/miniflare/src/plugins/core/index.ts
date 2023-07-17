@@ -296,7 +296,15 @@ export const CORE_PLUGIN: Plugin<
     additionalModules,
   }) {
     // Define regular user worker
-    const workerScript = getWorkerScript(options, workerIndex);
+    const additionalModuleNames = additionalModules.map(({ name }) => {
+      assert(name !== undefined);
+      return name;
+    });
+    const workerScript = getWorkerScript(
+      options,
+      workerIndex,
+      additionalModuleNames
+    );
     // Add additional modules (e.g. "__STATIC_CONTENT_MANIFEST") if any
     if ("modules" in workerScript) {
       workerScript.modules.push(...additionalModules);
@@ -455,12 +463,13 @@ export function getGlobalServices({
 
 function getWorkerScript(
   options: SourceOptions,
-  workerIndex: number
+  workerIndex: number,
+  additionalModuleNames: string[]
 ): { serviceWorkerScript: string } | { modules: Worker_Module[] } {
+  const modulesRoot =
+    ("modulesRoot" in options ? options.modulesRoot : undefined) ?? "";
   if (Array.isArray(options.modules)) {
     // If `modules` is a manually defined modules array, use that
-    const modulesRoot =
-      ("modulesRoot" in options ? options.modulesRoot : undefined) ?? "";
     return {
       modules: options.modules.map((module) =>
         convertModuleDefinition(modulesRoot, module)
@@ -483,7 +492,11 @@ function getWorkerScript(
 
   if (options.modules) {
     // If `modules` is `true`, automatically collect modules...
-    const locator = new ModuleLocator(options.modulesRules);
+    const locator = new ModuleLocator(
+      modulesRoot,
+      additionalModuleNames,
+      options.modulesRules
+    );
     // If `script` and `scriptPath` are set, resolve modules in `script`
     // against `scriptPath`.
     locator.visitEntrypoint(

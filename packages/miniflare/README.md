@@ -234,8 +234,9 @@ parameter in module format Workers.
 
 - `modulesRoot?: string`
 
-  If `modules` is set to an array, modules' "name"s will be their `path`s
-  relative to this value. This ensures file paths in stack traces are correct.
+  If `modules` is set to `true` or an array, modules' "name"s will be their
+  `path`s relative to this value. This ensures file paths in stack traces are
+  correct.
 
 <!-- prettier-ignore-start -->
 <!-- (for disabling `;` insertion in `js` code block) -->
@@ -370,6 +371,11 @@ parameter in module format Workers.
   modules mode, `__STATIC_CONTENT_MANIFEST` will also be exposed as a module
   with a `string`-typed `default` export, containing the JSON-stringified
   manifest. Note Workers Sites files are never cached in Miniflare.
+
+  > :warning: If you're using Workers Sites with automatic module location
+  > enabled (i.e. `modules: true`), you'll likely need to set `modulesRoot` to
+  > the directory containing your `scriptPath`. This will ensure the
+  > `__STATIC_CONTENT_MANIFEST` module gets resolved correctly.
 
 - `siteInclude?: string[]`
 

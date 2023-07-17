@@ -108,6 +108,14 @@ test("source maps workers", async (t) => {
       {
         name: "e",
         routes: ["*/e"],
+        bindings: { MESSAGE: "e" },
+        modules: true,
+        modulesRoot: tmp,
+        scriptPath: modulesPath,
+      },
+      {
+        name: "f",
+        routes: ["*/f"],
         modules: [
           // Check importing module with source map (e.g. Wrangler no bundle with built dependencies)
           {
@@ -142,6 +150,10 @@ test("source maps workers", async (t) => {
   });
   t.regex(String(error?.stack), modulesEntryRegexp);
   error = await t.throwsAsync(mf.dispatchFetch("http://localhost/e"), {
+    message: "e",
+  });
+  t.regex(String(error?.stack), modulesEntryRegexp);
+  error = await t.throwsAsync(mf.dispatchFetch("http://localhost/f"), {
     instanceOf: TypeError,
     message: "Dependency error",
   });
